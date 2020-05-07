@@ -14,6 +14,3 @@ def launch():
 	from myip_loadbalancer import launch
 	launch(ip="10.0.1.1",servers="10.0.0.2,10.0.0.3,10.0.0.4,10.0.0.5")
 
-	from misc.full_payload import launch
-	launch()
-

@@ -96,6 +96,8 @@ class iplb (object):
   def __init__ (self, connection, service_ip, servers = []):
     self.service_ip = IPAddr(service_ip)
     self.servers = [IPAddr(a) for a in servers]
+    self.nonUpdatedServer = [a for a in self.servers]
+    self.updatedServers = []
     self.con = connection
     self.mac = self.con.eth_addr
     self.live_servers = {} # IP -> MAC,port
@@ -191,7 +193,14 @@ class iplb (object):
     """
     Pick a server for a (hopefully) new connection
     """
-    return random.choice(self.live_servers.keys())
+    flag = False
+    while not flag:
+      picked = random.choice(self.live_servers.keys())
+      if (len(self.updatedServers) > len(self.nonUpdatedServer)):
+        flag = picked in self.updatedServers
+      else:
+        flag = picked in self.nonUpdatedServer
+    return picked
 
   def _handle_PacketIn (self, event):
     inport = event.port
@@ -236,8 +245,6 @@ class iplb (object):
     if ipp.srcip in self.servers:
       # It's FROM one of our balanced servers.
       # Rewrite it BACK to the client
-
-      self.log.debug("HTTP: %s", tcpp)
 
       key = ipp.srcip,ipp.dstip,tcpp.srcport,tcpp.dstport
       entry = self.memory.get(key)
@@ -308,9 +315,28 @@ class iplb (object):
                             match=match)
       self.con.send(msg)
 
+  def test(self):
+    print "this is a test"
 
+  def updateServer(self, server):
+    server = IPAddr(server)
+    #remove server from current list and add it to updated list.
+    if server in self.servers:
+      if server in self.updatedServers:
+        self.log.info("server: %s already updated", server)
+      else:
+        self.log.info("server: %s updating", server)
+        self.updatedServers.append(server)
+	self.nonUpdatedServer.remove(server)
+        if (len(self.nonUpdatedServer) < 1):
+          self.nonUpdatedServer = [a for a in self.updatedServers]
+          del self.updatedServers [:]
+        print self.nonUpdatedServer
+    else:
+      self.log.waring("not loadbalancing server %s", server)
+     
 # Remember which DPID we're operating on (first one to connect)
-_dpid = None
+_dpid = None 
 
 def launch (ip, servers):
   servers = servers.replace(","," ").split()
@@ -337,10 +363,11 @@ def launch (ip, servers):
       log.warn("Ignoring switch %s", event.connection)
     else:
       log.info("Load Balancing on %s", event.connection)
-
+      
+      #add interactivity for this load balancer
+      core.Interactive.variables["lb"] = core.iplb
       # Gross hack
       core.iplb.con = event.connection
       event.connection.addListeners(core.iplb)
-
 
   core.openflow.addListenerByName("ConnectionUp", _handle_ConnectionUp)
