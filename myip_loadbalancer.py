@@ -93,8 +93,9 @@ class iplb (object):
 
   We probe the servers to see if they're alive by sending them ARPs.
   """
-  def __init__ (self, connection, service_ip, servers = []):
-    self.service_ip = IPAddr(service_ip)
+  def __init__ (self, connection, service_ip1, service_ip2, servers = []):
+    self.service_ip1 = IPAddr(service_ip1)
+    self.service_ip2 = IPAddr(service_ip2)
     self.servers = [IPAddr(a) for a in servers]
     self.nonUpdatedServer = [a for a in self.servers]
     self.updatedServers = []
@@ -165,7 +166,16 @@ class iplb (object):
     r.hwdst = ETHER_BROADCAST
     r.protodst = server
     r.hwsrc = self.mac
-    r.protosrc = self.service_ip
+    if (server in self.nonUpdatedServer):
+      if len(self.nonUpdatedServer) > len(self.updatedServers):
+        r.protosrc = self.service_ip1
+      else:
+        r.protosrc = self.servcie_ip2
+    else:
+      if len(self.nonUpdatedServer) > len(self.updatedServers):
+        r.protosrc = self.service_ip2
+      else:
+        r.protosrc = self.service_ip1
     e = ethernet(type=ethernet.ARP_TYPE, src=self.mac,
                  dst=ETHER_BROADCAST)
     e.set_payload(r)
@@ -191,12 +201,22 @@ class iplb (object):
 
   def _pick_server (self, key, inport):
     """
-    Pick a server for a (hopefully) new connection
+    Pick a server for a (hopefully) new connection active servers
     """
     flag = False
     while not flag:
       picked = random.choice(self.live_servers.keys())
       if (len(self.updatedServers) > len(self.nonUpdatedServer)):
+        flag = picked in self.updatedServers
+      else:
+        flag = picked in self.nonUpdatedServer
+    return picked
+
+  def _pick_server_ip2 (self, key, inport):
+    flag = False
+    while not flag:
+      picked = random.choice(self.live_servers.keys())
+      if len(self.updatedServers) < len(self.nonUpdatedServer):
         flag = picked in self.updatedServers
       else:
         flag = picked in self.nonUpdatedServer
@@ -264,7 +284,16 @@ class iplb (object):
 
       actions = []
       actions.append(of.ofp_action_dl_addr.set_src(self.mac))
-      actions.append(of.ofp_action_nw_addr.set_src(self.service_ip))
+      if ipp.srcip in self.nonUpdatedServer:
+        if len(self.nonUpdatedServer) > len(self.updatedServers):
+      	  actions.append(of.ofp_action_nw_addr.set_src(self.service_ip1))
+        else:
+          actions.append(of.ofp_action_nw_addr.set_src(self.servcie_ip2))
+      else:
+        if len(self.nonUpdatedServer) > len(self.updatedServers):
+          actions.append(of.ofp_action_nw_addr.set_src(self.service_ip2))
+        else:
+          actions.append(of.ofp_action_nw_addr.set_src(self.service_ip1))
       actions.append(of.ofp_action_output(port = entry.client_port))
       match = of.ofp_match.from_packet(packet, inport)
 
@@ -276,7 +305,7 @@ class iplb (object):
                             match=match)
       self.con.send(msg)
 
-    elif ipp.dstip == self.service_ip:
+    elif ipp.dstip == self.service_ip1 or ipp.dstip == self.service_ip2:
       # Ah, it's for our service IP and needs to be load balanced
 
       # Do we already know this flow?
@@ -289,7 +318,10 @@ class iplb (object):
           return drop()
 
         # Pick a server for this flow
-        server = self._pick_server(key, inport)
+        if self.service_ip1 == ipp.dstip:
+          server = self._pick_server(key, inport)
+        else:
+          server = self._pick_server_ip2(key, inport)
         self.log.debug("Directing traffic to %s", server)
         entry = MemoryEntry(server, packet, inport)
         self.memory[entry.key1] = entry
@@ -338,16 +370,17 @@ class iplb (object):
 # Remember which DPID we're operating on (first one to connect)
 _dpid = None 
 
-def launch (ip, servers):
+def launch (ip1, ip2, servers):
   servers = servers.replace(","," ").split()
   servers = [IPAddr(x) for x in servers]
-  ip = IPAddr(ip)
+  ip1 = IPAddr(ip1)
+  ip2 = IPAddr(ip2)
 
   otherServers = ""
 
   # Boot up ARP Responder
   from proto.arp_responder import launch as arp_launch
-  arp_launch(eat_packets=False,**{str(ip):True})
+  arp_launch(eat_packets=False,**{str(ip1):True})
   import logging
   logging.getLogger("proto.arp_responder").setLevel(logging.WARN)
 
@@ -356,7 +389,7 @@ def launch (ip, servers):
     if _dpid is None:
 	if event.dpid == 1:
       		log.info("IP Load Balancer Ready.")
-      		core.registerNew(iplb, event.connection, IPAddr(ip), servers)
+      		core.registerNew(iplb, event.connection, IPAddr(ip1),IPAddr(ip2), servers)
       		_dpid = event.dpid
     
     if _dpid != event.dpid:

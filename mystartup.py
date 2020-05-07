@@ -12,5 +12,5 @@ def launch():
 	launch(ignore="1")
 
 	from myip_loadbalancer import launch
-	launch(ip="10.0.1.1",servers="10.0.0.2,10.0.0.3,10.0.0.4,10.0.0.5")
+	launch(ip1="10.0.1.1",ip2="10.0.2.1",servers="10.0.0.2,10.0.0.3,10.0.0.4,10.0.0.5")
 
