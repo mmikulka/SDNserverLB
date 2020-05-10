@@ -7,7 +7,7 @@ startOld() {
 
 startNew() {
     echo "Start service for" + $1
-    python ./new/webservice.py
+    python ./new/webservice.py $1
 }
 
 if [ "$1" == "start" ]
@@ -22,5 +22,4 @@ else
     echo "Basic Command:"
 	echo " start:   start old version"
 	echo " update:  start new version"
-    
-if
+fi
