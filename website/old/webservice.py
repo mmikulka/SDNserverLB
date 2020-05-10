@@ -7,7 +7,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def hello():
-	return json.dumps({"body": "From machine h3"})
+	return json.dumps({"body": "From machine " + hostNumber})
 
 @app.route("/healthcheck")
 def check():
@@ -19,24 +19,19 @@ def data():
 
 @app.route("/version")
 def version():
-	return json.dumps({"version":data['version']})
+	return json.dumps({"version":'1.1.2'})
 
 @app.route("/get")
 def get():
-	return json.dumps({"message":data['message'], "service":data['service']})
-
-
+	return json.dumps({"message": "From machine " + hostNumber, "service":"webservice"})
 
 argv = sys.argv
 if(len(argv)  == 2):
-	portNum = argv[1]
+	hostNumber = argv[1]
 else:
-	print(" enter port number")
+	print(" enter machineNumber")
 	exit()
 
-data = {}
-with open("./newconfig.json") as json_data_file:
-    	data = json.load(json_data_file)
 
 if __name__ == "__main__":
-	app.run(host="0.0.0.0", port=portNum)
+	app.run(host="0.0.0.0", port=80)

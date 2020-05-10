@@ -30,6 +30,8 @@ number 8100 is a directory which can be change to
 - 8400
 - 8500
 
+cd ../website/8000
+
 This way each time you access a server a message will appear on the command line letting you know the server is accessed.
 
 #### option2
