@@ -47,4 +47,6 @@ from the pox main folder
 ./pox.py mystartup.py
 
 
-once everything is setupyou can use the mininet command line to curl into 10.0.1.1:80 to test connections from h1 to the servers. 
+once everything is setupyou can use the mininet command line to curl into 10.0.1.1:80 to test connections from h1 to the servers.
+
+use: h1 curl 10.0.2.1 to access the updating servers. 

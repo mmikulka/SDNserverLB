@@ -29,6 +29,8 @@ from pox.lib.packet.ipv4 import ipv4
 from pox.lib.packet.arp import arp
 from pox.lib.addresses import IPAddr, EthAddr
 from pox.lib.util import str_to_bool, dpid_to_str
+from pox.messenger import *
+
 
 import pox.openflow.libopenflow_01 as of
 
@@ -123,6 +125,9 @@ class iplb (object):
     self.memory = {} # (srcip,dstip,srcport,dstport) -> MemoryEntry
 
     self._do_probe() # Kick off the probing
+    
+    #activate messanger API
+    core.listen_to_dependencies(self)
 
     # As part of a gross hack, we now do this from elsewhere
     #self.con.addListeners(self)
@@ -170,7 +175,7 @@ class iplb (object):
       if len(self.nonUpdatedServer) > len(self.updatedServers):
         r.protosrc = self.service_ip1
       else:
-        r.protosrc = self.servcie_ip2
+        r.protosrc = self.service_ip2
     else:
       if len(self.nonUpdatedServer) > len(self.updatedServers):
         r.protosrc = self.service_ip2
@@ -239,7 +244,7 @@ class iplb (object):
     if not tcpp:
       arpp = packet.find('arp')
       if arpp:
-#	self.log.debug("received arp for %s" %arpp.protosrc)
+#	self.log.debug("received arp for %s" %arpp)
         # Handle replies to our server-liveness probes
         if arpp.opcode == arpp.REPLY:
           if arpp.protosrc in self.outstanding_probes:
@@ -288,7 +293,7 @@ class iplb (object):
         if len(self.nonUpdatedServer) > len(self.updatedServers):
       	  actions.append(of.ofp_action_nw_addr.set_src(self.service_ip1))
         else:
-          actions.append(of.ofp_action_nw_addr.set_src(self.servcie_ip2))
+          actions.append(of.ofp_action_nw_addr.set_src(self.service_ip2))
       else:
         if len(self.nonUpdatedServer) > len(self.updatedServers):
           actions.append(of.ofp_action_nw_addr.set_src(self.service_ip2))
@@ -366,7 +371,54 @@ class iplb (object):
         print self.nonUpdatedServer
     else:
       self.log.waring("not loadbalancing server %s", server)
-     
+
+
+class UpdateService (object):
+  def __init__ (self, parent, con, event):
+    self.con = con
+    self.parent = parent
+    self.listeners = con.addListeners(self)
+    self.count = 0
+
+    #we only need to add teh listener, so dispatch the first message manually
+    self._handle_MessageReceived(event, event.msg)
+
+  def _handle_ConnectionClosed (self, event):
+    self.con.removeListeners(self.listeners)
+    self.parent.clients.pop(self.con, None)
+
+  def _handle_MessageReceived (self, event, msg):
+    self.count += 1
+    core.iplb.updateServer(str(msg.get('msg')))
+    self.con.send(reply(msg, count = self.count, msg = str(msg.get('msg'))))
+
+class update_bot (ChannelBot):
+  def _init (self, extra):
+    self.clients = {}
+    
+  
+  def _unhandled (self, event):
+    connection = event.con
+    if (connection not in self.clients):
+      self.clients[connection] = UpdateService(self, connection, event)
+ 
+class MessengerUpdate:
+  def __init__(self):
+    core.listen_to_dependencies(self)
+ 
+  def _all_dependencies_met (self):
+    #set up chat channel
+    chat_channel = core.MessengerNexus.get_channel("chat")
+    def handle_chat (event, msg):
+      m = str(msg.get("msg"))
+      chat_channel.send({"msg":str(event.con) + " says " + m})
+    chat_channel.addListener(MessageReceived, handle_chat)
+
+    # Set up the update channel
+    update_bot(core.MessengerNexus.get_channel("update_server"))   
+ 
+
+    
 # Remember which DPID we're operating on (first one to connect)
 _dpid = None 
 
@@ -397,6 +449,8 @@ def launch (ip1, ip2, servers):
     else:
       log.info("Load Balancing on %s", event.connection)
       
+      MessengerUpdate()
+
       #add interactivity for this load balancer
       core.Interactive.variables["lb"] = core.iplb
       # Gross hack
