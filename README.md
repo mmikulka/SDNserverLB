@@ -19,19 +19,6 @@ to start servers on mininet hosts:
 open external CLI for each server host:
 ``` xterm h2 h3 h4 h5 h6 ```
 
-
-on each external CLI
-``` python -m /website/8100/pipline.py 80 ```
-
-number 8100 is a directory which can be change to
-- 8100
-- 8200
-- 8300
-- 8400
-- 8500
-
-cd ../website/8000
-
 This way each time you access a server a message will appear on the command line letting you know the server is accessed.
 
 #### option2
@@ -56,8 +43,20 @@ from the pox main folder
 
 once everything is setupyou can use the mininet command line to curl into 10.0.1.1:80 to test connections from h1 to the servers. 
 
-#### Update the webserver
-to update the websier from host
+use: h1 curl 10.0.2.1 to access the updating servers.
 
-within in h2:
-``` python -m /website/8100/new/pipeline2.py 80
+### WebServer
+#### Start webserver
+in each host machine navigate to website folder
+``` python startWeb.sh start h1 ```
+h1 - is the host name, this just us to display what machine the server is on
+
+#### Update webserver
+similar to start process, after stop the old webserver
+``` python startWeb.sh start h1 ```
+
+### Curler
+Curler is a program that will curl to a specify ip using witn "version" path. 
+- Curler will only loop 500 time
+- 1 second delay between curl
+``` ./curler.sh 10.0.1.1 ```
