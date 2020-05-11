@@ -19,7 +19,7 @@ def data():
 
 @app.route("/version")
 def version():
-	return json.dumps({"version":'1.1.2'})
+	return json.dumps({"version":'2.0.1', "machine": hostNumber})
 
 @app.route("/get")
 def get():
