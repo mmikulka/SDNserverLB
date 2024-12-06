@@ -13,11 +13,7 @@
 # limitations under the License.
 
 """
-A very sloppy IP load balancer.
-
 Run it with --ip=<Service IP> --servers=IP1,IP2,...
-
-Please submit improvements. :)
 """
 
 from pox.core import core

@@ -27,11 +27,13 @@ def myNetwork():
     s1 = net.addSwitch('s1', cls=OVSKernelSwitch)
 
     info( '*** Add hosts\n')
-    h4 = net.addHost('h4', cls=Host, ip='10.0.0.4', defaultRoute=None)
-    h5 = net.addHost('h5', cls=Host, ip='10.0.0.5', defaultRoute=None)
     h2 = net.addHost('h2', cls=Host, ip='10.0.0.2', defaultRoute=None)
+    h4 = net.addHost('h4', cls=Host, ip='10.0.0.4', defaultRoute=None)
     h1 = net.addHost('h1', cls=Host, ip='10.0.0.1', defaultRoute=None)
+    h5 = net.addHost('h5', cls=Host, ip='10.0.0.5', defaultRoute=None)
+    h6 = net.addHost('h6', cls=Host, ip='10.0.0.6', defaultRoute=None)
     h3 = net.addHost('h3', cls=Host, ip='10.0.0.3', defaultRoute=None)
+    h7 = net.addHost('h7', cls=Host, ip='10.0.0.7', defaultRoute=None)
 
     info( '*** Add links\n')
     net.addLink(h2, s1)
@@ -39,6 +41,8 @@ def myNetwork():
     net.addLink(s1, h4)
     net.addLink(h5, s1)
     net.addLink(s1, h1)
+    net.addLink(s1, h6)
+    net.addLink(s1, h7)
 
     info( '*** Starting network\n')
     net.build()
